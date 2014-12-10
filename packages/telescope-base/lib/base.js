@@ -40,7 +40,28 @@ primaryNav = ['viewsMenu', 'adminMenu'];
 secondaryNav = ['userMenu', 'notificationsMenu', 'submitButton'];
 
 // array containing items in the admin menu
-adminNav = [];
+adminNav = [
+  {
+    route: 'posts_pending',
+    label: 'Pending'
+  },
+  {
+    route: 'posts_scheduled',
+    label: 'Scheduled'
+  },
+  {
+    route: 'all-users',
+    label: 'Users'
+  },
+  {
+    route: 'settings',
+    label: 'Settings'
+  },
+  {
+    route: 'toolbox',
+    label: 'Toolbox'
+  }
+];
 
 // array containing items in the views menu
 viewNav = [
@@ -55,18 +76,24 @@ viewNav = [
   {
     route: 'posts_best',
     label: 'best'
-  },
-  {
-    route: 'posts_digest_default',
-    label: 'digest'
-  } 
+  }
 ];
 
 // ------------------------------------- Views -------------------------------- //
 
 
 // object containing post list view parameters
-viewParameters = {}
+viewParameters = {};
+
+// will be common to all other view unless specific properties are overwritten
+viewParameters.baseParameters = {
+  find: {
+    status: STATUS_APPROVED
+  },
+  options: {
+    limit: 10
+  }
+};
 
 viewParameters.top = function (terms) {
   return {
@@ -89,30 +116,45 @@ viewParameters.best = function (terms) {
 viewParameters.pending = function (terms) {
   return {
     find: {
-      status: 1, 
-      $or: [
-        {postedAt: {$lte: new Date("December 31, 2999")}},
-        {postedAt: {$exists: false}}
-      ] // for pending view, show future posts too
+      status: 1
     }, 
-    options: {sort: {createdAt: -1}}
+    options: {sort: {createdAt: -1}},
+    showFuture: true
   };
 }
 
-viewParameters.digest = function (terms) {
+viewParameters.scheduled = function (terms) {
   return {
-    find: {
-      postedAt: {
-        $gte: terms.after, 
-        $lt: terms.before
-      }
-    },
-    options: {
-      sort: {sticky: -1, baseScore: -1, limit: 0}
-    }
+    find: {postedAt: {$gte: new Date()}},
+    options: {sort: {postedAt: -1}}
   };
 }
 
+viewParameters.userPosts = function (terms) {
+  return {
+    find: {userId: terms.userId},
+    options: {limit: 5, sort: {postedAt: -1}}
+  };
+}
+
+viewParameters.userUpvotedPosts = function (terms) {
+  var user = Meteor.users.findOne(terms.userId);
+  var postsIds = _.pluck(user.votes.upvotedPosts, "itemId");
+  return {
+    find: {_id: {$in: postsIds}, userId: {$ne: terms.userId}}, // exclude own posts
+    options: {limit: 5, sort: {postedAt: -1}}
+  };
+}
+
+viewParameters.userDownvotedPosts = function (terms) {
+  var user = Meteor.users.findOne(terms.userId);
+  var postsIds = _.pluck(user.votes.downvotedPosts, "itemId");
+  // TODO: sort based on votedAt timestamp and not postedAt, if possible
+  return {
+    find: {_id: {$in: postsIds}},
+    options: {limit: 5, sort: {postedAt: -1}}
+  };
+}
 
 heroModules = [];
 
@@ -201,15 +243,46 @@ commentEditClientCallbacks = [];
 commentEditMethodCallbacks = []; // not used yet
 commentAfterEditMethodCallbacks = []; // not used yet
 
+// ------------------------------------- User Profiles -------------------------------- //
+
+userProfileDisplay = [
+  {
+    template: 'userInfo',
+    order: 1
+  },
+  {
+    template: 'userPosts',
+    order: 2
+  },
+  {
+    template: 'userUpvotedPosts',
+    order: 3
+  },  
+  {
+    template: 'userDownvotedPosts', 
+    order: 5
+  },  
+  {
+    template: 'userComments', 
+    order: 5
+  }
+];
+
+userProfileEdit = [
+  {
+    template: 'userAccount',
+    order: 1
+  }
+]
+
 userEditRenderedCallbacks = [];
 userEditClientCallbacks = [];
 
 userProfileCompleteChecks = [
   function(user) {
-    return !!getEmail(user) && !!user.username;
+    return !!getEmail(user) && !!getUserName(user);
   }
 ];
-
 
 // ------------------------------ Dynamic Templates ------------------------------ //
 

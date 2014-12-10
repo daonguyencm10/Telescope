@@ -15,6 +15,7 @@ email
 accounts-facebook
 service-configuration
 accounts-ui
+reactive-var
 
 # Atmosphere Packages
 
@@ -69,8 +70,9 @@ telescope-newsletter
 telescope-daily
 telescope-update-prompt
 telescope-kadira
-
 telescope-notifications
+telescope-singleday
+telescope-invites
 
 # Accounts Templates
 useraccounts:unstyled

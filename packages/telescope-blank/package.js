@@ -15,22 +15,19 @@ Package.onUse(function (api) {
   // automatic (let the package specify where it's needed)
 
   api.use([
-    'telescope-base',
-    'telescope-lib',
-    'telescope-i18n',
-    'tap:i18n'
+    'tap:i18n',                   // internationalization package
+    'iron:router',                // routing package
+    'telescope-base',             // basic Telescope hooks and objects
+    'telescope-lib',              // useful functions
+    'telescope-i18n'              // internationalization wrapper
   ]);
-
-  // both
-
-  api.use([
-    //
-  ], ['client','server']);
 
   // client
 
   api.use([
-    //
+    'jquery',                     // useful for DOM interactions
+    'underscore',                 // JavaScript swiss army knife library
+    'templating'                  // required for client-side templates
   ], ['client']);
 
   // server

@@ -150,8 +150,9 @@ postSchemaObject = {
       // only provide a default value
       // 1) this is an insert operation
       // 2) status field is not set in the document being inserted
-      if(this.isInsert && !this.isSet)
-        return getSetting('requirePostsApproval', false) ? STATUS_PENDING: STATUS_APPROVED
+      var user = Meteor.users.findOne(this.userId);  
+      if (this.isInsert && !this.isSet)
+        return getDefaultPostStatus(user);
     },
     autoform: {
       noselect: true,
@@ -162,6 +163,7 @@ postSchemaObject = {
   sticky: {
     type: Boolean,
     optional: true,
+    defaultValue: false,
     autoform: {
       group: 'admin',
       leftLabel: "Sticky"
@@ -246,6 +248,17 @@ getPostProperties = function (post) {
 
   return p;
 };
+
+// default status for new posts
+getDefaultPostStatus = function (user) {
+  if (isAdmin(user) || !getSetting('requirePostsApproval', false)) {
+    // if user is admin, or else post approval is not required
+    return STATUS_APPROVED
+  } else {
+    // else
+    return STATUS_PENDING
+  }
+}
 
 getPostPageUrl = function(post){
   return getSiteUrl()+'posts/'+post._id;
@@ -360,11 +373,12 @@ Meteor.methods({
     }
 
     // Status
-    var defaultPostStatus = getSetting('requirePostsApproval') ? STATUS_PENDING : STATUS_APPROVED;
-    if(isAdmin(Meteor.user()) && !!post.status){ // if user is admin and a custom status has been set
+    if(!!post.status && isAdmin(Meteor.user())){
+      // if a custom status has been set, and user is admin, use that
       properties.status = post.status;
-    }else{ // else use default status
-      properties.status = defaultPostStatus;
+    }else{
+      // else use default status
+      properties.status = getDefaultPostStatus(Meteor.user());
     }
 
     // CreatedAt
@@ -462,8 +476,13 @@ Meteor.methods({
 
   approvePost: function(post){
     if(isAdmin(Meteor.user())){
-      var now = new Date();
-      var result = Posts.update(post._id, {$set: {status: 2, postedAt: now}}, {validate: false});
+      var set = {status: 2};
+
+      // unless post is already scheduled and has a postedAt date, set its postedAt date to now
+      if (!post.postedAt)
+        set.postedAt = new Date();
+      
+      var result = Posts.update(post._id, {$set: set}, {validate: false});
     }else{
       flashMessage('You need to be an admin to do that.', "error");
     }
@@ -508,11 +527,14 @@ Meteor.methods({
     // }
     // NOTE: actually, keep comments after all
 
-    // decrement post count
     var post = Posts.findOne({_id: postId});
+    
     if(!Meteor.userId() || !canEditById(Meteor.userId(), post)) throw new Meteor.Error(606, 'You need permission to edit or delete a post');
-
+    
+    // decrement post count
     Meteor.users.update({_id: post.userId}, {$inc: {postCount: -1}});
+    
+    // delete post
     Posts.remove(postId);
   }
 

@@ -37,7 +37,7 @@ Template.afPostThumbnail.rendered = function () {
       Meteor.call('getEmbedlyData', url, function (error, data) {
         if (error) {
           console.log(error)
-          flashMessage(error.reason, 'error');
+          flashMessage(error.message, 'error');
           $thumbnailContainer.removeClass('loading');
           return
         }
@@ -61,3 +61,10 @@ Template.afPostThumbnail.rendered = function () {
   });
 }
 
+Template.afPostThumbnail.events({
+  'click .remove-thumbnail-link': function (e, t) {
+    e.preventDefault();
+    t.$('.post-thumbnail-preview').attr('src', '');
+    t.$('input').val('');
+  }
+})
